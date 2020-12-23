@@ -384,7 +384,6 @@ void setup() {
 
   Serial.begin(9600);
   time.begin();
-  time.settime(0, 45, 23, 18, 12, 20);
 
   EEPROM.get(NUMBER_OF_EVENTS, numberOfEvents);
 
