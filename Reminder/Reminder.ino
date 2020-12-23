@@ -1,8 +1,12 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
+#include <iarduino_RTC.h>
+
+iarduino_RTC time(RTC_DS3231);
+
 Adafruit_PCD8544 display = Adafruit_PCD8544(9, 10, 11, 12, 13);
 
-const byte START_MENU_LENGTH = 2;
+const byte START_MENU_LENGTH = 3;
 const byte ADD_MENU_LENGTH = 4;
 const byte MENU_ROW_HEIGHT = 11;
 const byte LCD_ROWS = 4;
@@ -44,6 +48,8 @@ int data[6] = {0, 0, 0, 1, 1, 0};
 int highLim[6] = {23, 59, 59, 31, 12, 99};
 int lowLim[6] = {0, 0, 0, 1, 1, 0};
 
+int setTime[6] = {0, 0, 0, 1, 1, 0};
+
 int positName = 0;
 int codeOfSymbol = 32;
 char Symbol = ' ';
@@ -65,14 +71,15 @@ struct Event{
   String desOfEvent;
 };
 
-const int LENGTH_EVENTS = 6;
+const int LENGTH_EVENTS = 5;
 byte numberOfEvents = 0;
 
 Event arrayOfEvents[LENGTH_EVENTS];
 
-String startMenu[2] = {
+String startMenu[3] = {
   "Add event",
-  "Events"
+  "Events",
+  "Set time"
 };
 
 String addMenu[4] = {
@@ -88,15 +95,281 @@ byte numberOfPage = 0;
 
 byte yesOrNo = 0;
 
-void showError(String str) {
+byte seconds;
+byte minutes;
+byte hours;
+byte day;
+byte month;
+byte year;
+
+byte nowEvent;
+
+void showSetTime(){
    display.clearDisplay();
    display.setTextColor(BLACK, WHITE);
-   display.setCursor(0, 0); 
-   display.print(str);
-   display.display();
+   display.setCursor(28, 10); 
+   display.print("Time:");
+   int markerX = 0;
+   int markerY = 0;
+   int seconddot = 0;
+   int line = 0;
+
+   if (setTime[5] % 4 == 0 && setTime[3] > 29 && setTime[4] == 2) {
+     highLim[3] = 29;
+     setTime[3] = 29;
+   } else if (setTime[5] % 4 == 0 && setTime[4] == 2) {
+     highLim[3] = 29;
+   } else if (setTime[5] % 4 != 0 && setTime[3] > 28 && setTime[4] == 2) {
+     highLim[3] = 28;
+     setTime[3] = 28;
+   } else if (setTime[5] % 4 != 0 && setTime[4] == 2) {
+     highLim[3] = 28;
+   } else if ((setTime[4] <= 7 && setTime[4] % 2 == 0 && setTime[4] != 2 && setTime[3] == 31) || (setTime[4] >= 9 && setTime[4] % 2 == 1 && setTime[3] == 31)) {
+     highLim[3] = 30;
+     setTime[3] = 30;
+   } else if ((setTime[4] <= 7 && setTime[4] % 2 == 0 && setTime[4] != 2) || (setTime[4] >= 9 && setTime[4] % 2 == 1)) {
+     highLim[3] = 30;
+   } else {
+     highLim[3] = 31;
+   }
+
+   for (int i = 0; i < 6; ++i) {
+    if (i < 3) {
+      markerX = i * MENU_ROW_WIGHT + 7*seconddot + 15;
+      markerY = 20;
+    }
+    if (i >= 3) {
+      markerX = (i - 3) * MENU_ROW_WIGHT + 7*line + 15;
+      markerY = 30;
+    }
+
+    if (i == posit) {
+      display.setTextColor(WHITE, BLACK);
+      display.fillRect(markerX - 1, markerY - 1, 13, 9, BLACK);
+    } else {
+      display.setTextColor(BLACK, WHITE);
+      display.fillRect(markerX - 1, markerY - 1, 13, 14, WHITE);
+    }
+
+    display.setCursor(markerX, markerY);
+    if (setTime[i] < 10) {
+      display.print(0);
+      display.setCursor(markerX + 6, markerY);
+      display.print(setTime[i]);
+    } else {
+      display.print(setTime[i]);
+    }
+
+    if (i == 0 || i == 1) {
+      display.setTextColor(BLACK, WHITE);
+      display.setCursor(markerX + 13, markerY);
+      display.print(":");
+      seconddot++;
+    }
+
+    if (i == 3 || i == 4) {
+      display.setTextColor(BLACK, WHITE);
+      display.setCursor(markerX + 13, markerY);
+      display.print("/");
+      line++;
+    }
+   }
+
+  display.display();
+}
+
+
+void showTimeMenu(){
+   display.clearDisplay();
+   display.setTextColor(BLACK, WHITE);
+   display.setCursor(28, 10); 
+   display.print("Time:");
+   int markerX = 0;
+   int markerY = 0;
+   int seconddot = 0;
+   int line = 0;
+
+   if (data[5] % 4 == 0 && data[3] > 29 && data[4] == 2) {
+     highLim[3] = 29;
+     data[3] = 29;
+   } else if (data[5] % 4 == 0 && data[4] == 2) {
+     highLim[3] = 29;
+   } else if (data[5] % 4 != 0 && data[3] > 28 && data[4] == 2) {
+     highLim[3] = 28;
+     data[3] = 28;
+   } else if (data[5] % 4 != 0 && data[4] == 2) {
+     highLim[3] = 28;
+   } else if ((data[4] <= 7 && data[4] % 2 == 0 && data[4] != 2 && data[3] == 31) || (data[4] >= 9 && data[4] % 2 == 1 && data[3] == 31)) {
+     highLim[3] = 30;
+     data[3] = 30;
+   } else if ((data[4] <= 7 && data[4] % 2 == 0 && data[4] != 2) || (data[4] >= 9 && data[4] % 2 == 1)) {
+     highLim[3] = 30;
+   } else {
+     highLim[3] = 31;
+   }
+
+   for (int i = 0; i < 6; ++i) {
+    if (i < 3) {
+      markerX = i * MENU_ROW_WIGHT + 7*seconddot + 15;
+      markerY = 20;
+    }
+    if (i >= 3) {
+      markerX = (i - 3) * MENU_ROW_WIGHT + 7*line + 15;
+      markerY = 30;
+    }
+
+    if (i == posit) {
+      display.setTextColor(WHITE, BLACK);
+      display.fillRect(markerX - 1, markerY - 1, 13, 9, BLACK);
+    } else {
+      display.setTextColor(BLACK, WHITE);
+      display.fillRect(markerX - 1, markerY - 1, 13, 14, WHITE);
+    }
+
+    display.setCursor(markerX, markerY);
+    if (data[i] < 10) {
+      display.print(0);
+      display.setCursor(markerX + 6, markerY);
+      display.print(data[i]);
+    } else {
+      display.print(data[i]);
+    }
+
+    if (i == 0 || i == 1) {
+      display.setTextColor(BLACK, WHITE);
+      display.setCursor(markerX + 13, markerY);
+      display.print(":");
+      seconddot++;
+    }
+
+    if (i == 3 || i == 4) {
+      display.setTextColor(BLACK, WHITE);
+      display.setCursor(markerX + 13, markerY);
+      display.print("/");
+      line++;
+    }
+   }
+
+  display.display();
+}
+
+template <typename T>
+void showMenu(int menuStartAt, int menuPos, T MENU_LENGTH, String menu[], int wear = 0){
+  if (wear == 0) {
+    display.clearDisplay();
+   for (int i = menuStartAt; i < (menuStartAt + LCD_ROWS); i++) {
+    int markerY = (i - menuStartAt) * MENU_ROW_HEIGHT;
+    
+    if (i == menuPos) {
+      display.setTextColor(WHITE, BLACK);
+      display.fillRect(0, markerY, display.width(), MENU_ROW_HEIGHT, BLACK);
+    } else {
+      display.setTextColor(BLACK, WHITE);
+      display.fillRect(0, markerY, display.width(), MENU_ROW_HEIGHT, WHITE);
+    }
+
+    if (i >= MENU_LENGTH) {
+      continue;
+    }
+
+    display.setCursor(2, markerY + 2);
+    display.print(menu[i]);
+  }
+  } else {
+    display.clearDisplay();
+   for (int i = menuStartAt; i < (menuStartAt + LCD_ROWS); i++) {
+    int markerY = (i - menuStartAt) * MENU_ROW_HEIGHT;
+    
+    if (i == menuPos) {
+      display.setTextColor(WHITE, BLACK);
+      display.fillRect(0, markerY, display.width(), MENU_ROW_HEIGHT, BLACK);
+    } else {
+      display.setTextColor(BLACK, WHITE);
+      display.fillRect(0, markerY, display.width(), MENU_ROW_HEIGHT, WHITE);
+    }
+
+    if (i >= MENU_LENGTH) {
+      continue;
+    }
+
+    display.setCursor(2, markerY + 2);
+    display.print(menu[i]);
+  }
+  if (hours >= 10) {
+    display.setCursor(18, 33);
+    display.print(hours);
+  } else {
+    display.setCursor(18, 33);
+    display.print("0");
+    display.setCursor(24, 33);
+    display.print(hours);
+  }  
+  display.setCursor(30, 33);
+  display.print(":");
+  if (minutes >= 10) {
+    display.setCursor(36, 33);
+    display.print(minutes);
+  } else {
+    display.setCursor(36, 33);
+    display.print("0");
+    display.setCursor(42, 33);
+    display.print(minutes);
+  }
+  display.setCursor(48, 33);
+  display.print(":");
+  if (seconds >= 10) {
+    display.setCursor(54, 33);
+    display.print(seconds);
+  } else {
+    display.setCursor(54, 33);
+    display.print("0");
+    display.setCursor(60, 33);
+    display.print(seconds);
+  }
+
+  if (day >= 10) {
+    display.setCursor(18, 41);
+    display.print(day);
+  } else {
+    display.setCursor(18, 41);
+    display.print("0");
+    display.setCursor(24, 41);
+    display.print(day);
+  }  
+  display.setCursor(30, 41);
+  display.print("/");
+  if (month >= 10) {
+    display.setCursor(36, 41);
+    display.print(month);
+  } else {
+    display.setCursor(36, 41);
+    display.print("0");
+    display.setCursor(42, 41);
+    display.print(month);
+  }
+  display.setCursor(48, 41);
+  display.print("/");
+  if (year >= 10) {
+    display.setCursor(54, 41);
+    display.print(year);
+  } else {
+    display.setCursor(54, 41);
+    display.print("0");
+    display.setCursor(60, 41);
+    display.print(year);
+  }
+  }
+   
+
+  display.display();
 }
 
 void setup() {
+
+  Serial.begin(9600);
+  time.begin();
+  time.settime(0, 0, 0, 1, 11, 20, 0);
+  
   pinMode(BTN_A, INPUT_PULLUP);
   pinMode(BTN_B, INPUT_PULLUP);
   pinMode(BTN_C, INPUT_PULLUP);
@@ -110,79 +383,36 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
-}
-
-bool isButtonDown(int pin) {
-  if (digitalRead(pin) == LOW) {
-    delay(30);
-
-    if (digitalRead(pin) == LOW) { 
-      delay(100);     
-      return true;
-    }
-    return false;
-  }
-  return false;
-}
-
-
-void replacement(int i, int j) {
-  byte t;
-  String str;
-  
-  t = arrayOfEvents[i].year;
-  arrayOfEvents[i].year = arrayOfEvents[j].year;
-  arrayOfEvents[j].year = t;
-
-  t = arrayOfEvents[i].month;
-  arrayOfEvents[i].month = arrayOfEvents[j].month;
-  arrayOfEvents[j].month = t;
-
-  t = arrayOfEvents[i].day;
-  arrayOfEvents[i].day = arrayOfEvents[j].day;
-  arrayOfEvents[j].day = t;
-
-  t = arrayOfEvents[i].hour;
-  arrayOfEvents[i].hour = arrayOfEvents[j].hour;
-  arrayOfEvents[j].hour = t;
-
-  t = arrayOfEvents[i].minute;
-  arrayOfEvents[i].minute = arrayOfEvents[j].minute;
-  arrayOfEvents[j].minute = t;
-
-  t = arrayOfEvents[i].second;
-  arrayOfEvents[i].second = arrayOfEvents[j].second;
-  arrayOfEvents[j].second = t;
-
-  str = arrayOfEvents[i].nameOfEvent;
-  arrayOfEvents[i].nameOfEvent = arrayOfEvents[j].nameOfEvent;
-  arrayOfEvents[j].nameOfEvent = str;
-
-  str = arrayOfEvents[i].desOfEvent;
-  arrayOfEvents[i].desOfEvent = arrayOfEvents[j].desOfEvent;
-  arrayOfEvents[j].desOfEvent = str; 
-  
-  eventsMenu[i] = arrayOfEvents[i].nameOfEvent;
-  eventsMenu[j] = arrayOfEvents[j].nameOfEvent;
-}
-
-
-void sortOfEvents() {
-  for (int i = 0; i < numberOfEvents; i++) {
-    for (int j = 0; j < numberOfEvents - 1; j++) {
-        if (arrayOfEvents[j].year > arrayOfEvents[j + 1].year) replacement(j, j + 1);
-        else if (arrayOfEvents[j].month > arrayOfEvents[j + 1].month) replacement(j, j + 1);
-        else if (arrayOfEvents[j].day > arrayOfEvents[j + 1].day) replacement(j, j + 1);
-        else if (arrayOfEvents[j].hour > arrayOfEvents[j + 1].hour) replacement(j, j + 1);
-        else if (arrayOfEvents[j].minute > arrayOfEvents[j + 1].minute) replacement(j, j + 1);
-        else if (arrayOfEvents[j].second > arrayOfEvents[j + 1].second) replacement(j, j + 1);
-    } 
-  }
+  showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
 }
 
 void loop() {
+  
+  seconds = atoi(time.gettime("s"));
+  minutes = atoi(time.gettime("i"));
+  hours = atoi(time.gettime("H"));
+  day = atoi(time.gettime("d"));
+  month = atoi(time.gettime("m"));
+  year = atoi(time.gettime("y"));
+  if (seconds == arrayOfEvents[0].second &&
+        minutes == arrayOfEvents[0].minute &&
+        hours == arrayOfEvents[0].hour &&
+        day == arrayOfEvents[0].day &&
+        month == arrayOfEvents[0].month &&
+        year == arrayOfEvents[0].year) {
+          showError(arrayOfEvents[0].nameOfEvent);
+          delay(2000);
+          arrayOfEvents[0].year = 100;
+          arrayOfEvents[0].nameOfEvent = "";
+          arrayOfEvents[0].desOfEvent = "";
+          sortOfEvents();
+          numberOfEvents--;
+          levelMenu = 0;
+          showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
+  }
+  
   if (levelMenu == 0){
+    showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
     if (analogRead(PIN_ANALOG_Y) < Y_THRESHOLD_LOW) {   
       if (startMenuPos < START_MENU_LENGTH - 1) {
         startMenuPos++;
@@ -191,9 +421,8 @@ void loop() {
           startMenuStartAt++;
         }
         
-        showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
-      }
-      delay(100);   
+        showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
+      }   
   }
 
     if (analogRead(PIN_ANALOG_Y) > Y_THRESHOLD_HIGH) {    
@@ -204,10 +433,8 @@ void loop() {
           startMenuStartAt--;
         }
         
-        showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+        showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
       }
-      
-      delay(100);
     }
 
     if (isButtonDown(BTN_C)) {
@@ -220,12 +447,16 @@ void loop() {
           showError("No events!");
           delay(2000);
           levelMenu = 0;
-          showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+          showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
         } else {
           showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
         }
       }
+      if (levelMenu == 9) {
+        showSetTime();
+      }
     }
+    delay(100);
   }
 
   if (levelMenu == 1) {
@@ -260,7 +491,7 @@ void loop() {
     if (isButtonDown(BTN_B)) {
       addMenuPos = 0;
       levelMenu = 0;
-      showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+      showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
     }
 
     if (isButtonDown(BTN_C)) {
@@ -307,7 +538,7 @@ void loop() {
             desOfEvent = " ";
             addMenuPos = 0;
             levelMenu = 0;
-            showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);          
+            showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);          
         } else if (nameOfEvent == " ") {
           showError("No name!");
           delay(2000);
@@ -559,7 +790,7 @@ void loop() {
     if (isButtonDown(BTN_B)) {
       levelMenu = 0;
       eventsMenuPos = 0;
-      showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+      showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
     }
 
     if (isButtonDown(BTN_C)) {
@@ -606,7 +837,7 @@ void loop() {
         yesOrNo = 0;
         if (numberOfEvents == 0) {
           levelMenu = 0;
-          showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+          showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
         } else {
           levelMenu = 5;
           showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
@@ -614,7 +845,142 @@ void loop() {
       }
     }
   }
+
+  if (levelMenu == 9) {
+    if (analogRead(PIN_ANALOG_Y) < Y_THRESHOLD_LOW) {
+      if (lowLim[posit] < setTime[posit]){
+        setTime[posit]--;
+        showSetTime();
+        delay(200); 
+      } else {
+        setTime[posit] = highLim[posit];
+        showSetTime();
+        delay(200);   
+      }
+  }
+
+    if (analogRead(PIN_ANALOG_Y) > Y_THRESHOLD_HIGH) {
+      if (highLim[posit] > setTime[posit]){
+        setTime[posit]++;
+        showSetTime();
+        delay(200);
+      } else {
+        setTime[posit] = lowLim[posit];
+        showSetTime();
+        delay(200);
+      }
+   }
+
+   if (analogRead(PIN_ANALOG_X) < X_THRESHOLD_LOW) {
+    if (posit > 0){
+      posit--;
+      showSetTime();
+      delay(300);
+    } else if (posit == 0) {
+      posit = 5;
+      showSetTime();
+      delay(300);
+    }
+  }
+
+    if (analogRead(PIN_ANALOG_X) > X_THRESHOLD_HIGH) {
+      if (posit < 5){
+         posit++;
+         showSetTime();
+         delay(300); 
+      } else if (posit == 5) {
+         posit = 0;
+         showSetTime();
+         delay(300);      
+      }
+   }
+
+   if (isButtonDown(BTN_C)) {
+    levelMenu = 0;
+    time.settime(setTime[2], setTime[1], setTime[0], setTime[3], setTime[4], setTime[5]);
+    showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
+   }
+
+   if (isButtonDown(BTN_B)) {
+      levelMenu = 0;
+      showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
+    }
+  }
   
+}
+
+bool isButtonDown(int pin) {
+  if (digitalRead(pin) == LOW) {
+    delay(30);
+
+    if (digitalRead(pin) == LOW) { 
+      delay(100);     
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+void replacement(int i, int j) {
+  byte t;
+  String str;
+  
+  t = arrayOfEvents[i].year;
+  arrayOfEvents[i].year = arrayOfEvents[j].year;
+  arrayOfEvents[j].year = t;
+
+  t = arrayOfEvents[i].month;
+  arrayOfEvents[i].month = arrayOfEvents[j].month;
+  arrayOfEvents[j].month = t;
+
+  t = arrayOfEvents[i].day;
+  arrayOfEvents[i].day = arrayOfEvents[j].day;
+  arrayOfEvents[j].day = t;
+
+  t = arrayOfEvents[i].hour;
+  arrayOfEvents[i].hour = arrayOfEvents[j].hour;
+  arrayOfEvents[j].hour = t;
+
+  t = arrayOfEvents[i].minute;
+  arrayOfEvents[i].minute = arrayOfEvents[j].minute;
+  arrayOfEvents[j].minute = t;
+
+  t = arrayOfEvents[i].second;
+  arrayOfEvents[i].second = arrayOfEvents[j].second;
+  arrayOfEvents[j].second = t;
+
+  str = arrayOfEvents[i].nameOfEvent;
+  arrayOfEvents[i].nameOfEvent = arrayOfEvents[j].nameOfEvent;
+  arrayOfEvents[j].nameOfEvent = str;
+
+  str = arrayOfEvents[i].desOfEvent;
+  arrayOfEvents[i].desOfEvent = arrayOfEvents[j].desOfEvent;
+  arrayOfEvents[j].desOfEvent = str; 
+  
+  eventsMenu[i] = arrayOfEvents[i].nameOfEvent;
+  eventsMenu[j] = arrayOfEvents[j].nameOfEvent;
+}
+
+void sortOfEvents() {
+  for (int i = 0; i < numberOfEvents; i++) {
+    for (int j = 0; j < numberOfEvents - 1; j++) {
+        if (arrayOfEvents[j].year > arrayOfEvents[j + 1].year) replacement(j, j + 1);
+        else if (arrayOfEvents[j].month > arrayOfEvents[j + 1].month) replacement(j, j + 1);
+        else if (arrayOfEvents[j].day > arrayOfEvents[j + 1].day) replacement(j, j + 1);
+        else if (arrayOfEvents[j].hour > arrayOfEvents[j + 1].hour) replacement(j, j + 1);
+        else if (arrayOfEvents[j].minute > arrayOfEvents[j + 1].minute) replacement(j, j + 1);
+        else if (arrayOfEvents[j].second > arrayOfEvents[j + 1].second) replacement(j, j + 1);
+    } 
+  }
+}
+
+void showError(String str) {
+   display.clearDisplay();
+   display.setTextColor(BLACK, WHITE);
+   display.setCursor(0, 0); 
+   display.print(str);
+   display.display();
 }
 
 void showDeleteMenu() {
@@ -668,7 +1034,7 @@ void showEvent(int event) {
   display.setCursor(28, 18);
   display.print("Time:");
   
-  if (arrayOfEvents[event].hour > 10) {
+  if (arrayOfEvents[event].hour >= 10) {
     display.setCursor(18, 27);
     display.print(arrayOfEvents[event].hour);
   } else {
@@ -679,7 +1045,7 @@ void showEvent(int event) {
   }  
   display.setCursor(30, 27);
   display.print(":");
-  if (arrayOfEvents[event].minute > 10) {
+  if (arrayOfEvents[event].minute >= 10) {
     display.setCursor(36, 27);
     display.print(arrayOfEvents[event].minute);
   } else {
@@ -690,7 +1056,7 @@ void showEvent(int event) {
   }
   display.setCursor(48, 27);
   display.print(":");
-  if (arrayOfEvents[event].second > 10) {
+  if (arrayOfEvents[event].second >= 10) {
     display.setCursor(54, 27);
     display.print(arrayOfEvents[event].second);
   } else {
@@ -700,7 +1066,7 @@ void showEvent(int event) {
     display.print(arrayOfEvents[event].second);
   }
 
-  if (arrayOfEvents[event].day > 10) {
+  if (arrayOfEvents[event].day >= 10) {
     display.setCursor(18, 35);
     display.print(arrayOfEvents[event].day);
   } else {
@@ -711,7 +1077,7 @@ void showEvent(int event) {
   }  
   display.setCursor(30, 35);
   display.print("/");
-  if (arrayOfEvents[event].month > 10) {
+  if (arrayOfEvents[event].month >= 10) {
     display.setCursor(36, 35);
     display.print(arrayOfEvents[event].month);
   } else {
@@ -722,7 +1088,7 @@ void showEvent(int event) {
   }
   display.setCursor(48, 35);
   display.print("/");
-  if (arrayOfEvents[event].year > 10) {
+  if (arrayOfEvents[event].year >= 10) {
     display.setCursor(54, 35);
     display.print(arrayOfEvents[event].year);
   } else {
@@ -762,104 +1128,6 @@ void showEvent(int event) {
   display.display();
 }
 
-template <typename T>
-void showMenu(int menuStartAt, int menuPos, T MENU_LENGTH, String menu[]){
-   display.clearDisplay();
-   for (int i = menuStartAt; i < (menuStartAt + LCD_ROWS); i++) {
-    int markerY = (i - menuStartAt) * MENU_ROW_HEIGHT;
-    
-    if (i == menuPos) {
-      display.setTextColor(WHITE, BLACK);
-      display.fillRect(0, markerY, display.width(), MENU_ROW_HEIGHT, BLACK);
-    } else {
-      display.setTextColor(BLACK, WHITE);
-      display.fillRect(0, markerY, display.width(), MENU_ROW_HEIGHT, WHITE);
-    }
-
-    if (i >= MENU_LENGTH) {
-      continue;
-    }
-
-    display.setCursor(2, markerY + 2);
-    display.print(menu[i]);
-  }
-
-  display.display();
-}
-
-void showTimeMenu(){
-   display.clearDisplay();
-   display.setTextColor(BLACK, WHITE);
-   display.setCursor(28, 10); 
-   display.print("Time:");
-   int markerX = 0;
-   int markerY = 0;
-   int seconddot = 0;
-   int line = 0;
-
-   if (data[5] % 4 == 0 && data[3] > 29 && data[4] == 2) {
-     highLim[3] = 29;
-     data[3] = 29;
-   } else if (data[5] % 4 == 0 && data[4] == 2) {
-     highLim[3] = 29;
-   } else if (data[5] % 4 != 0 && data[3] > 28 && data[4] == 2) {
-     highLim[3] = 28;
-     data[3] = 28;
-   } else if (data[5] % 4 != 0 && data[4] == 2) {
-     highLim[3] = 28;
-   } else if ((data[4] <= 7 && data[4] % 2 == 0 && data[4] != 2 && data[3] == 31) || (data[4] >= 9 && data[4] % 2 == 1 && data[3] == 31)) {
-     highLim[3] = 30;
-     data[3] = 30;
-   } else if ((data[4] <= 7 && data[4] % 2 == 0 && data[4] != 2) || (data[4] >= 9 && data[4] % 2 == 1)) {
-     highLim[3] = 30;
-   } else {
-     highLim[3] = 31;
-   }
-
-   for (int i = 0; i < 6; ++i) {
-    if (i < 3) {
-      markerX = i * MENU_ROW_WIGHT + 7*seconddot + 15;
-      markerY = 20;
-    }
-    if (i >= 3) {
-      markerX = (i - 3) * MENU_ROW_WIGHT + 7*line + 15;
-      markerY = 30;
-    }
-
-    if (i == posit) {
-      display.setTextColor(WHITE, BLACK);
-      display.fillRect(markerX - 1, markerY - 1, 13, 9, BLACK);
-    } else {
-      display.setTextColor(BLACK, WHITE);
-      display.fillRect(markerX - 1, markerY - 1, 13, 14, WHITE);
-    }
-
-    display.setCursor(markerX, markerY);
-    if (data[i] < 10) {
-      display.print(0);
-      display.setCursor(markerX + 6, markerY);
-      display.print(data[i]);
-    } else {
-      display.print(data[i]);
-    }
-
-    if (i == 0 || i == 1) {
-      display.setTextColor(BLACK, WHITE);
-      display.setCursor(markerX + 13, markerY);
-      display.print(":");
-      seconddot++;
-    }
-
-    if (i == 3 || i == 4) {
-      display.setTextColor(BLACK, WHITE);
-      display.setCursor(markerX + 13, markerY);
-      display.print("/");
-      line++;
-    }
-   }
-
-  display.display();
-}
 
 void showNameMenu(){
    display.clearDisplay();
