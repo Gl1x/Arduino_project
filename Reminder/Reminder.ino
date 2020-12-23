@@ -71,7 +71,7 @@ struct Event{
   String desOfEvent;
 };
 
-const int LENGTH_EVENTS = 5;
+const int LENGTH_EVENTS = 6;
 byte numberOfEvents = 0;
 
 Event arrayOfEvents[LENGTH_EVENTS];
@@ -103,6 +103,16 @@ byte month;
 byte year;
 
 byte nowEvent;
+
+void showError(String str1, String str2 = "") {
+   display.clearDisplay();
+   display.setTextColor(BLACK, WHITE);
+   display.setCursor(1, 0); 
+   display.print(str1);
+   display.setCursor(1, 9);
+   display.print(str2);
+   display.display();
+}
 
 void showSetTime(){
    display.clearDisplay();
@@ -254,8 +264,8 @@ void showTimeMenu(){
 }
 
 template <typename T>
-void showMenu(int menuStartAt, int menuPos, T MENU_LENGTH, String menu[], int wear = 0){
-  if (wear == 0) {
+void showMenu(int menuStartAt, int menuPos, T MENU_LENGTH, String menu[], int watch = 0){
+  if (watch == 0) {
     display.clearDisplay();
    for (int i = menuStartAt; i < (menuStartAt + LCD_ROWS); i++) {
     int markerY = (i - menuStartAt) * MENU_ROW_HEIGHT;
@@ -368,7 +378,7 @@ void setup() {
 
   Serial.begin(9600);
   time.begin();
-  time.settime(0, 0, 0, 1, 11, 20, 0);
+  time.settime(0, 45, 23, 18, 12, 20);
   
   pinMode(BTN_A, INPUT_PULLUP);
   pinMode(BTN_B, INPUT_PULLUP);
@@ -394,21 +404,25 @@ void loop() {
   day = atoi(time.gettime("d"));
   month = atoi(time.gettime("m"));
   year = atoi(time.gettime("y"));
-  if (seconds == arrayOfEvents[0].second &&
-        minutes == arrayOfEvents[0].minute &&
-        hours == arrayOfEvents[0].hour &&
-        day == arrayOfEvents[0].day &&
-        month == arrayOfEvents[0].month &&
-        year == arrayOfEvents[0].year) {
-          showError(arrayOfEvents[0].nameOfEvent);
-          delay(2000);
-          arrayOfEvents[0].year = 100;
-          arrayOfEvents[0].nameOfEvent = "";
-          arrayOfEvents[0].desOfEvent = "";
+  for (int i = 0; i < numberOfEvents; ++i) {
+    if (seconds == arrayOfEvents[i].second &&
+        minutes == arrayOfEvents[i].minute &&
+        hours == arrayOfEvents[i].hour &&
+        day == arrayOfEvents[i].day &&
+        month == arrayOfEvents[i].month &&
+        year == arrayOfEvents[i].year) {
+          while (!isButtonDown(BTN_C)) {
+            showError(arrayOfEvents[i].nameOfEvent, arrayOfEvents[i].desOfEvent);
+            delay(100);
+          }
+          arrayOfEvents[i].year = 100;
+          arrayOfEvents[i].nameOfEvent = "";
+          arrayOfEvents[i].desOfEvent = "";
           sortOfEvents();
           numberOfEvents--;
           levelMenu = 0;
           showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
+    }
   }
   
   if (levelMenu == 0){
@@ -897,7 +911,8 @@ void loop() {
 
    if (isButtonDown(BTN_C)) {
     levelMenu = 0;
-    time.settime(setTime[2], setTime[1], setTime[0], setTime[3], setTime[4], setTime[5]);
+    time.settime(setTime[2], setTime[1], setTime[0], setTime[3], setTime[4], setTime[5]
+    );
     showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
    }
 
@@ -973,14 +988,6 @@ void sortOfEvents() {
         else if (arrayOfEvents[j].second > arrayOfEvents[j + 1].second) replacement(j, j + 1);
     } 
   }
-}
-
-void showError(String str) {
-   display.clearDisplay();
-   display.setTextColor(BLACK, WHITE);
-   display.setCursor(0, 0); 
-   display.print(str);
-   display.display();
 }
 
 void showDeleteMenu() {
