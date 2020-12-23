@@ -62,8 +62,13 @@ struct Event{
   byte minute;
   byte second;
   String nameOfEvent;
-  String descriptionOfEvent;
+  String desOfEvent;
 };
+
+const int LENGTH_EVENTS = 6;
+byte numberOfEvents = 0;
+
+Event arrayOfEvents[LENGTH_EVENTS];
 
 String startMenu[2] = {
   "Add event",
@@ -77,10 +82,19 @@ String addMenu[4] = {
   "Save"
 };
 
-String eventsMenu[2] = {
-  "First",
-  "Second"
-};
+String eventsMenu[LENGTH_EVENTS];
+
+byte numberOfPage = 0;
+
+byte yesOrNo = 0;
+
+void showError(String str) {
+   display.clearDisplay();
+   display.setTextColor(BLACK, WHITE);
+   display.setCursor(0, 0); 
+   display.print(str);
+   display.display();
+}
 
 void setup() {
   pinMode(BTN_A, INPUT_PULLUP);
@@ -112,6 +126,61 @@ bool isButtonDown(int pin) {
   return false;
 }
 
+
+void replacement(int i, int j) {
+  byte t;
+  String str;
+  
+  t = arrayOfEvents[i].year;
+  arrayOfEvents[i].year = arrayOfEvents[j].year;
+  arrayOfEvents[j].year = t;
+
+  t = arrayOfEvents[i].month;
+  arrayOfEvents[i].month = arrayOfEvents[j].month;
+  arrayOfEvents[j].month = t;
+
+  t = arrayOfEvents[i].day;
+  arrayOfEvents[i].day = arrayOfEvents[j].day;
+  arrayOfEvents[j].day = t;
+
+  t = arrayOfEvents[i].hour;
+  arrayOfEvents[i].hour = arrayOfEvents[j].hour;
+  arrayOfEvents[j].hour = t;
+
+  t = arrayOfEvents[i].minute;
+  arrayOfEvents[i].minute = arrayOfEvents[j].minute;
+  arrayOfEvents[j].minute = t;
+
+  t = arrayOfEvents[i].second;
+  arrayOfEvents[i].second = arrayOfEvents[j].second;
+  arrayOfEvents[j].second = t;
+
+  str = arrayOfEvents[i].nameOfEvent;
+  arrayOfEvents[i].nameOfEvent = arrayOfEvents[j].nameOfEvent;
+  arrayOfEvents[j].nameOfEvent = str;
+
+  str = arrayOfEvents[i].desOfEvent;
+  arrayOfEvents[i].desOfEvent = arrayOfEvents[j].desOfEvent;
+  arrayOfEvents[j].desOfEvent = str; 
+  
+  eventsMenu[i] = arrayOfEvents[i].nameOfEvent;
+  eventsMenu[j] = arrayOfEvents[j].nameOfEvent;
+}
+
+
+void sortOfEvents() {
+  for (int i = 0; i < numberOfEvents; i++) {
+    for (int j = 0; j < numberOfEvents - 1; j++) {
+        if (arrayOfEvents[j].year > arrayOfEvents[j + 1].year) replacement(j, j + 1);
+        else if (arrayOfEvents[j].month > arrayOfEvents[j + 1].month) replacement(j, j + 1);
+        else if (arrayOfEvents[j].day > arrayOfEvents[j + 1].day) replacement(j, j + 1);
+        else if (arrayOfEvents[j].hour > arrayOfEvents[j + 1].hour) replacement(j, j + 1);
+        else if (arrayOfEvents[j].minute > arrayOfEvents[j + 1].minute) replacement(j, j + 1);
+        else if (arrayOfEvents[j].second > arrayOfEvents[j + 1].second) replacement(j, j + 1);
+    } 
+  }
+}
+
 void loop() {
   if (levelMenu == 0){
     if (analogRead(PIN_ANALOG_Y) < Y_THRESHOLD_LOW) {   
@@ -124,7 +193,6 @@ void loop() {
         
         showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
       }
-      
       delay(100);   
   }
 
@@ -148,7 +216,14 @@ void loop() {
         showMenu(addMenuStartAt, addMenuPos, ADD_MENU_LENGTH, addMenu);
       }
       if (levelMenu == 5){
-        showMenu(eventsMenuStartAt, eventsMenuPos, eventsMenuLength, eventsMenu);
+        if (numberOfEvents == 0) {
+          showError("No events!");
+          delay(2000);
+          levelMenu = 0;
+          showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+        } else {
+          showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
+        }
       }
     }
   }
@@ -183,23 +258,6 @@ void loop() {
     }
 
     if (isButtonDown(BTN_B)) {
-      posit = 0;
-      seconddot = 0;
-      line = 0;
-      for (int i = 0; i < 6; ++i) {
-        data[i] = 0;
-        if (i == 3 || i == 4) {
-          data[i] = 1;
-        }
-      }
-      positName = 0;
-      codeOfSymbol = 32;
-      Symbol = ' ';
-      nameOfEvent = " ";
-      positOfDes = 0;
-      codeOfSymbolOfDes = 32;
-      SymbolOfDes = ' ';
-      desOfEvent = " ";
       addMenuPos = 0;
       levelMenu = 0;
       showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
@@ -216,9 +274,49 @@ void loop() {
         levelMenu = 4;
         showDesMenu();
       } else {
-        addMenuPos = 0;
-        levelMenu = 0;
-        showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+        if (numberOfEvents < LENGTH_EVENTS && nameOfEvent != " ") {
+            arrayOfEvents[numberOfEvents].year = data[5];
+            arrayOfEvents[numberOfEvents].month = data[4];
+            arrayOfEvents[numberOfEvents].day = data[3];
+            arrayOfEvents[numberOfEvents].hour = data[0];
+            arrayOfEvents[numberOfEvents].minute = data[1];
+            arrayOfEvents[numberOfEvents].second = data[2];
+            arrayOfEvents[numberOfEvents].nameOfEvent = nameOfEvent;
+            arrayOfEvents[numberOfEvents].desOfEvent = desOfEvent;
+            eventsMenu[numberOfEvents] = nameOfEvent;
+            numberOfEvents++;
+            
+            sortOfEvents();            
+            
+            posit = 0;
+            seconddot = 0;
+            line = 0;
+            for (int i = 0; i < 6; ++i) {
+              data[i] = 0;
+              if (i == 3 || i == 4) {
+                data[i] = 1;
+              }
+            }
+            positName = 0;
+            codeOfSymbol = 32;
+            Symbol = ' ';
+            nameOfEvent = " ";
+            positOfDes = 0;
+            codeOfSymbolOfDes = 32;
+            SymbolOfDes = ' ';
+            desOfEvent = " ";
+            addMenuPos = 0;
+            levelMenu = 0;
+            showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);          
+        } else if (nameOfEvent == " ") {
+          showError("No name!");
+          delay(2000);
+          showMenu(addMenuStartAt, addMenuPos, ADD_MENU_LENGTH, addMenu);           
+        } else {
+          showError("Maximum events");
+          delay(2000);
+          showMenu(addMenuStartAt, addMenuPos, ADD_MENU_LENGTH, addMenu);
+        }
       }
     }
   }
@@ -431,14 +529,14 @@ void loop() {
 
   if(levelMenu == 5) {
     if (analogRead(PIN_ANALOG_Y) < Y_THRESHOLD_LOW) {   
-      if (eventsMenuPos < eventsMenuLength - 1) {
+      if (eventsMenuPos < numberOfEvents - 1) {
         eventsMenuPos++;
   
         if (eventsMenuPos > 3) {
           eventsMenuStartAt++;
         }
         
-        showMenu(eventsMenuStartAt, eventsMenuPos, eventsMenuLength, eventsMenu);
+        showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
       }
       
       delay(100);   
@@ -448,11 +546,11 @@ void loop() {
       if (eventsMenuPos > 0) {
         eventsMenuPos--;
   
-        if (eventsMenuStartAt > 0) {
+        if (eventsMenuStartAt > 0 && eventsMenuStartAt == eventsMenuPos + 1) {
           eventsMenuStartAt--;
         }
         
-        showMenu(eventsMenuStartAt, eventsMenuPos, eventsMenuLength, eventsMenu);
+        showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
       }
       
       delay(100);
@@ -460,15 +558,209 @@ void loop() {
 
     if (isButtonDown(BTN_B)) {
       levelMenu = 0;
+      eventsMenuPos = 0;
       showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
     }
 
     if (isButtonDown(BTN_C)) {
+      levelMenu = 6;
+      showEvent(eventsMenuPos);
+      
+    }
+
+    if (isButtonDown(BTN_D)) {
+      
+    }
+
+    if (isButtonDown(BTN_A)) {
+       levelMenu = 7;
+       showDeleteMenu();
+    }
+  }
+
+  if (levelMenu == 6) {
+    showEvent(eventsMenuPos);
+    if (isButtonDown(BTN_B)) {
+      levelMenu = 5;
+      numberOfPage = 0;
+      showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
+    }
+    
+  }
+
+  if (levelMenu == 7) {
+    showDeleteMenu();
+    if (isButtonDown(BTN_C)){
+      if (yesOrNo == 0) {
+        levelMenu = 5;
+        showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
+      } else {
+        arrayOfEvents[eventsMenuPos].year = 100;
+        arrayOfEvents[eventsMenuPos].nameOfEvent = "";
+        arrayOfEvents[eventsMenuPos].desOfEvent = "";
+        sortOfEvents();
+        numberOfEvents--;
+        if (numberOfEvents == eventsMenuPos && eventsMenuPos != 0) {
+          eventsMenuPos--;
+        }
+        yesOrNo = 0;
+        if (numberOfEvents == 0) {
+          levelMenu = 0;
+          showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu);
+        } else {
+          levelMenu = 5;
+          showMenu(eventsMenuStartAt, eventsMenuPos, numberOfEvents, eventsMenu);
+        }
+      }
     }
   }
   
 }
 
+void showDeleteMenu() {
+  display.clearDisplay();
+  display.setTextColor(BLACK, WHITE);
+  display.setCursor(0, 0);
+  display.print("Delete this   event?");
+
+  if (analogRead(PIN_ANALOG_X) < X_THRESHOLD_LOW) {
+    yesOrNo = 1;
+  }
+
+  if (analogRead(PIN_ANALOG_X) > X_THRESHOLD_HIGH) {
+    yesOrNo = 0;
+  }
+
+  if (yesOrNo == 0) {
+    display.setTextColor(BLACK, WHITE);
+    display.setCursor(20, 30);
+    display.print("YES");
+    
+
+    display.setTextColor(WHITE, BLACK);
+    display.fillRect(39, 29, 13, 9, BLACK);
+    display.setCursor(40, 30);
+    display.print("NO");
+    
+  } else {
+    display.setTextColor(BLACK, WHITE);
+    display.setCursor(40, 30);
+    display.print("NO");
+
+    display.setTextColor(WHITE, BLACK);
+    display.fillRect(19, 29, 18, 9, BLACK);
+    display.setCursor(20, 30);
+    display.print("YES");
+  }
+
+  display.display();
+}
+
+
+void showEvent(int event) {
+  if (numberOfPage == 0) {
+   display.clearDisplay();
+  display.setTextColor(BLACK, WHITE);  
+  display.setCursor(28, 0); 
+  display.print("Name:"); 
+  display.setCursor(2,9);
+  display.print(arrayOfEvents[event].nameOfEvent);
+  display.setCursor(28, 18);
+  display.print("Time:");
+  
+  if (arrayOfEvents[event].hour > 10) {
+    display.setCursor(18, 27);
+    display.print(arrayOfEvents[event].hour);
+  } else {
+    display.setCursor(18, 27);
+    display.print("0");
+    display.setCursor(24, 27);
+    display.print(arrayOfEvents[event].hour);
+  }  
+  display.setCursor(30, 27);
+  display.print(":");
+  if (arrayOfEvents[event].minute > 10) {
+    display.setCursor(36, 27);
+    display.print(arrayOfEvents[event].minute);
+  } else {
+    display.setCursor(36, 27);
+    display.print("0");
+    display.setCursor(42, 27);
+    display.print(arrayOfEvents[event].minute);
+  }
+  display.setCursor(48, 27);
+  display.print(":");
+  if (arrayOfEvents[event].second > 10) {
+    display.setCursor(54, 27);
+    display.print(arrayOfEvents[event].second);
+  } else {
+    display.setCursor(54, 27);
+    display.print("0");
+    display.setCursor(60, 27);
+    display.print(arrayOfEvents[event].second);
+  }
+
+  if (arrayOfEvents[event].day > 10) {
+    display.setCursor(18, 35);
+    display.print(arrayOfEvents[event].day);
+  } else {
+    display.setCursor(18, 35);
+    display.print("0");
+    display.setCursor(24, 35);
+    display.print(arrayOfEvents[event].day);
+  }  
+  display.setCursor(30, 35);
+  display.print("/");
+  if (arrayOfEvents[event].month > 10) {
+    display.setCursor(36, 35);
+    display.print(arrayOfEvents[event].month);
+  } else {
+    display.setCursor(36, 35);
+    display.print("0");
+    display.setCursor(42, 35);
+    display.print(arrayOfEvents[event].month);
+  }
+  display.setCursor(48, 35);
+  display.print("/");
+  if (arrayOfEvents[event].year > 10) {
+    display.setCursor(54, 35);
+    display.print(arrayOfEvents[event].year);
+  } else {
+    display.setCursor(54, 35);
+    display.print("0");
+    display.setCursor(60, 35);
+    display.print(arrayOfEvents[event].year);
+  }
+
+  display.drawLine(82, 0, 82, 24, BLACK);
+  display.drawLine(83, 0, 83, 24, BLACK);
+  }
+
+  if (numberOfPage == 1) {
+    display.clearDisplay();
+    display.setTextColor(BLACK, WHITE);  
+    display.setCursor(7, 0); 
+    display.print("Description:");
+    display.setCursor(2,9);
+    display.print(arrayOfEvents[event].desOfEvent);
+    display.drawLine(82, 24, 82, 48, BLACK);
+    display.drawLine(83, 24, 83, 48, BLACK);
+  }
+
+  if (analogRead(PIN_ANALOG_Y) < Y_THRESHOLD_LOW) {   
+      numberOfPage = 1;
+      delay(100);   
+    }
+
+    if (analogRead(PIN_ANALOG_Y) > Y_THRESHOLD_HIGH) {    
+      numberOfPage = 0;
+      delay(100); 
+    }
+
+  
+  
+  display.display();
+}
 
 template <typename T>
 void showMenu(int menuStartAt, int menuPos, T MENU_LENGTH, String menu[]){
