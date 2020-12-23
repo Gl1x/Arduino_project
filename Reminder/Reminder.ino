@@ -1,6 +1,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
 #include <iarduino_RTC.h>
+#include <EEPROM.h>
 
 iarduino_RTC time(RTC_DS3231);
 
@@ -60,6 +61,9 @@ int codeOfSymbolOfDes = 32;
 char SymbolOfDes = ' ';
 String desOfEvent = " ";
 
+const byte SIZE_OF_EVENT = 80;
+const int NUMBER_OF_EVENTS = 1023;
+
 struct Event{
   byte year;
   byte month;
@@ -67,8 +71,10 @@ struct Event{
   byte hour;
   byte minute;
   byte second;
+  byte lengthOfName;
+  byte lengthOfDes;
   String nameOfEvent;
-  String desOfEvent;
+  String desOfEvent;  
 };
 
 const int LENGTH_EVENTS = 6;
@@ -379,6 +385,29 @@ void setup() {
   Serial.begin(9600);
   time.begin();
   time.settime(0, 45, 23, 18, 12, 20);
+
+  EEPROM.get(NUMBER_OF_EVENTS, numberOfEvents);
+
+  for (int i = 0; i < numberOfEvents; i++) {
+    EEPROM.get(SIZE_OF_EVENT * i, arrayOfEvents[i].year);
+    EEPROM.get(SIZE_OF_EVENT * i + 1, arrayOfEvents[i].month);
+    EEPROM.get(SIZE_OF_EVENT * i + 2, arrayOfEvents[i].day);
+    EEPROM.get(SIZE_OF_EVENT * i + 3, arrayOfEvents[i].hour);
+    EEPROM.get(SIZE_OF_EVENT * i + 4, arrayOfEvents[i].minute);
+    EEPROM.get(SIZE_OF_EVENT * i + 5, arrayOfEvents[i].second);
+    EEPROM.get(SIZE_OF_EVENT * i + 6, arrayOfEvents[i].lengthOfName);
+    EEPROM.get(SIZE_OF_EVENT * i + 7, arrayOfEvents[i].lengthOfDes);
+    char ch;
+    for (int j = 0; j < arrayOfEvents[i].lengthOfName; j++) {
+        EEPROM.get(SIZE_OF_EVENT * (i + 1) - (67 - j), ch);
+        arrayOfEvents[i].nameOfEvent += ch;
+    }
+    for (int j = 0; j < arrayOfEvents[i].lengthOfDes; j++) {
+        EEPROM.get(SIZE_OF_EVENT * (i + 1) - (53 - j), ch);
+        arrayOfEvents[i].desOfEvent += ch;
+    }
+    eventsMenu[i] = arrayOfEvents[i].nameOfEvent;
+  }
   
   pinMode(BTN_A, INPUT_PULLUP);
   pinMode(BTN_B, INPUT_PULLUP);
@@ -420,6 +449,25 @@ void loop() {
           arrayOfEvents[i].desOfEvent = "";
           sortOfEvents();
           numberOfEvents--;
+          EEPROM.put(NUMBER_OF_EVENTS, numberOfEvents);
+
+          for (int i = 0; i < numberOfEvents; i++) {
+              EEPROM.put(SIZE_OF_EVENT * i, arrayOfEvents[i].year);
+              EEPROM.put(SIZE_OF_EVENT * i + 1, arrayOfEvents[i].month);
+              EEPROM.put(SIZE_OF_EVENT * i + 2, arrayOfEvents[i].day);
+              EEPROM.put(SIZE_OF_EVENT * i + 3, arrayOfEvents[i].hour);
+              EEPROM.put(SIZE_OF_EVENT * i + 4, arrayOfEvents[i].minute);
+              EEPROM.put(SIZE_OF_EVENT * i + 5, arrayOfEvents[i].second);
+              EEPROM.put(SIZE_OF_EVENT * i + 6, arrayOfEvents[i].lengthOfName);
+              EEPROM.put(SIZE_OF_EVENT * i + 7, arrayOfEvents[i].lengthOfDes);
+              for (int j = 0; j < arrayOfEvents[i].lengthOfName; j++) {
+                EEPROM.put(SIZE_OF_EVENT * (i + 1) - (67 - j), arrayOfEvents[i].nameOfEvent[j]);
+              }
+              for (int j = 0; j < arrayOfEvents[i].lengthOfDes; j++) {
+                EEPROM.put(SIZE_OF_EVENT * (i + 1) - (53 - j), arrayOfEvents[i].desOfEvent[j]);
+              }
+          }
+          
           levelMenu = 0;
           showMenu(startMenuStartAt, startMenuPos, START_MENU_LENGTH, startMenu, 1);
     }
@@ -526,12 +574,32 @@ void loop() {
             arrayOfEvents[numberOfEvents].hour = data[0];
             arrayOfEvents[numberOfEvents].minute = data[1];
             arrayOfEvents[numberOfEvents].second = data[2];
+            arrayOfEvents[numberOfEvents].lengthOfName = nameOfEvent.length();
+            arrayOfEvents[numberOfEvents].lengthOfDes = desOfEvent.length();
             arrayOfEvents[numberOfEvents].nameOfEvent = nameOfEvent;
             arrayOfEvents[numberOfEvents].desOfEvent = desOfEvent;
             eventsMenu[numberOfEvents] = nameOfEvent;
             numberOfEvents++;
+            EEPROM.put(NUMBER_OF_EVENTS, numberOfEvents);
             
-            sortOfEvents();            
+            sortOfEvents(); 
+
+            for (int i = 0; i < numberOfEvents; i++) {
+              EEPROM.put(SIZE_OF_EVENT * i, arrayOfEvents[i].year);
+              EEPROM.put(SIZE_OF_EVENT * i + 1, arrayOfEvents[i].month);
+              EEPROM.put(SIZE_OF_EVENT * i + 2, arrayOfEvents[i].day);
+              EEPROM.put(SIZE_OF_EVENT * i + 3, arrayOfEvents[i].hour);
+              EEPROM.put(SIZE_OF_EVENT * i + 4, arrayOfEvents[i].minute);
+              EEPROM.put(SIZE_OF_EVENT * i + 5, arrayOfEvents[i].second);
+              EEPROM.put(SIZE_OF_EVENT * i + 6, arrayOfEvents[i].lengthOfName);
+              EEPROM.put(SIZE_OF_EVENT * i + 7, arrayOfEvents[i].lengthOfDes);
+              for (int j = 0; j < arrayOfEvents[i].lengthOfName; j++) {
+                EEPROM.put(SIZE_OF_EVENT * (i + 1) - (67 - j), arrayOfEvents[i].nameOfEvent[j]);
+              }
+              for (int j = 0; j < arrayOfEvents[i].lengthOfDes; j++) {
+                EEPROM.put(SIZE_OF_EVENT * (i + 1) - (53 - j), arrayOfEvents[i].desOfEvent[j]);
+              }
+            }
             
             posit = 0;
             seconddot = 0;
@@ -845,6 +913,25 @@ void loop() {
         arrayOfEvents[eventsMenuPos].desOfEvent = "";
         sortOfEvents();
         numberOfEvents--;
+        EEPROM.put(NUMBER_OF_EVENTS, numberOfEvents);
+
+        for (int i = 0; i < numberOfEvents; i++) {
+              EEPROM.put(SIZE_OF_EVENT * i, arrayOfEvents[i].year);
+              EEPROM.put(SIZE_OF_EVENT * i + 1, arrayOfEvents[i].month);
+              EEPROM.put(SIZE_OF_EVENT * i + 2, arrayOfEvents[i].day);
+              EEPROM.put(SIZE_OF_EVENT * i + 3, arrayOfEvents[i].hour);
+              EEPROM.put(SIZE_OF_EVENT * i + 4, arrayOfEvents[i].minute);
+              EEPROM.put(SIZE_OF_EVENT * i + 5, arrayOfEvents[i].second);
+              EEPROM.put(SIZE_OF_EVENT * i + 6, arrayOfEvents[i].lengthOfName);
+              EEPROM.put(SIZE_OF_EVENT * i + 7, arrayOfEvents[i].lengthOfDes);
+              for (int j = 0; j < arrayOfEvents[i].lengthOfName; j++) {
+                EEPROM.put(SIZE_OF_EVENT * (i + 1) - (67 - j), arrayOfEvents[i].nameOfEvent[j]);
+              }
+              for (int j = 0; j < arrayOfEvents[i].lengthOfDes; j++) {
+                EEPROM.put(SIZE_OF_EVENT * (i + 1) - (53 - j), arrayOfEvents[i].desOfEvent[j]);
+              }
+        }
+        
         if (numberOfEvents == eventsMenuPos && eventsMenuPos != 0) {
           eventsMenuPos--;
         }
